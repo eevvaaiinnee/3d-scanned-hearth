@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>The Hearth Kitchen — Montclair History Center</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="description" content="An interactive 3D tour of the reconstructed Hearth Kitchen at the Israel Crane House, Montclair History Center." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --white: #ffffff;
+    --ink: #211d1a;
+    --ink-soft: #5c564e;
+    --kicker: #3a9fd2;
+    --accent: #3a9fd2;
+    --hairline: #e8e3da;
+    --canvas-bg: #171310;
+    --sans: 'Montserrat', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  html{ scroll-behavior: auto; }
+  body{
+    margin:0; background:var(--white); color:var(--ink);
+    font-family: var(--sans);
+  }
+  @media (prefers-reduced-motion: reduce){
+    html{ scroll-behavior: auto; }
+  }
+
+  .layout{
+    display:grid;
+    grid-template-columns: minmax(360px, 34%) 1fr;
+  }
+
+  /* ---------- LEFT: scrolling text ---------- */
+  .text-col{ background: var(--white); }
+  .section{
+    min-height: 92vh;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    padding: 12vh 64px;
+    border-top: 1px solid var(--hairline);
+  }
+  .section:first-child{ border-top:none; }
+  .logo{
+    width: 190px;
+    height: auto;
+    display: block;
+    align-self: center;
+    margin-bottom: 28px;
+  }
+  .scroll-cue{
+    position: fixed;
+    bottom: 30px;
+    left: calc(max(360px, 34vw) / 2);
+    transform: translateX(-50%);
+    z-index: 4;
+    color: var(--kicker);
+    width: 32px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .5s ease;
+  }
+  .scroll-cue.visible{
+    opacity: 1;
+    pointer-events: auto;
+    animation: breathe 2.2s ease-in-out infinite;
+  }
+  .scroll-cue svg{ width:32px; height:32px; display:block; }
+  @keyframes breathe{
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(8px); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .scroll-cue.visible{ animation: none; }
+  }
+  @media (max-width: 860px){
+    .scroll-cue{ left: 50%; }
+  }
+
+  .kicker{
+    font-family: var(--sans);
+    font-size: 11.5px;
+    font-weight:600;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--kicker);
+    margin-bottom:18px;
+  }
+  h2{
+    font-family: var(--sans);
+    font-weight:600;
+    font-size: clamp(28px, 3vw, 38px);
+    line-height:1.15;
+    margin: 0 0 22px;
+    letter-spacing: -0.01em;
+  }
+  .section p{
+    font-family: var(--sans);
+    font-size: 16.5px;
+    line-height:1.75;
+    color: var(--ink-soft);
+    margin: 0 0 16px;
+    max-width: 46ch;
+  }
+  .section.ending{
+    background: #faf9f7;
+  }
+  .ending h2{ font-size: clamp(24px, 2.6vw, 30px); }
+  .ending .cta{
+    display:inline-block;
+    margin-top: 8px;
+    margin-bottom: 28px;
+    font-family: var(--sans);
+    font-weight:600;
+    font-size:15px;
+    color: var(--accent);
+    text-decoration:none;
+    border-bottom: 1px solid var(--accent);
+    padding-bottom: 2px;
+    width: fit-content;
+  }
+  .ending .cta:hover{ opacity:.75; }
+  .section p.credit{
+    font-size: 10px;
+    color: var(--ink-soft);
+    line-height:1.6;
+    letter-spacing: .01em;
+    max-width: 44ch;
+    margin-top: 20px;
+  }
+
+  .scroll-indicator-wrap{
+    position: sticky;
+    top: 0;
+    height: 0;
+    overflow: visible;
+    z-index: 2;
+  }
+  .scroll-indicator{
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 7px;
+    height: 100vh;
+    background: #ddd6c8;
+    border-radius: 4px 0 0 4px;
+  }
+  .scroll-indicator-fill{
+    width: 100%;
+    background: var(--accent);
+    height: 0%;
+    transition: height .08s linear;
+    border-radius: 4px 0 0 4px;
+  }
+  @media (max-width: 860px){
+    .scroll-indicator-wrap{ display:none; }
+  }
+
+  /* ---------- RIGHT: sticky splat viewer ---------- */
+  .view-col{
+    position: sticky;
+    top:0;
+    height:100vh;
+    background: var(--canvas-bg);
+    overflow:hidden;
+  }
+  #canvas-wrap{ position:absolute; inset:0; }
+  canvas{ display:block; width:100%; height:100%; }
+
+  .loading{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:12px; background:var(--canvas-bg); color:#cfc7bb;
+    font-family: var(--sans); font-size:13px; z-index:6; letter-spacing:.02em;
+  }
+  .loading .bar{ width:200px; height:2px; background:#332c24; border-radius:2px; overflow:hidden; }
+  .loading .fill{ height:100%; width:0%; background:var(--accent); transition:width .15s; }
+
+  /* re-anchor button */
+  .reanchor{
+    position:absolute; top:20px; left:20px; z-index:5;
+    width:42px; height:42px; border-radius:50%;
+    background:rgba(23,19,16,.55); backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,.16);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; transition: background .15s, transform .15s;
+  }
+  .reanchor:hover{ background:rgba(58,159,210,.85); }
+  .reanchor:active{ transform: scale(0.94); }
+  .reanchor:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .reanchor svg{ width:18px; height:18px; }
+
+  /* section dot nav */
+  .dotnav{
+    position:absolute; top:50%; right:22px; transform:translateY(-50%);
+    z-index:5; display:flex; flex-direction:column; gap:13px;
+  }
+  .dotnav button{
+    width:7px; height:7px; border-radius:50%; padding:0;
+    background:rgba(255,255,255,.28); border:none; cursor:pointer;
+    transition: background .2s, transform .2s;
+  }
+  .dotnav button.active{ background:var(--accent); transform:scale(1.5); }
+  .dotnav button:hover{ background:rgba(255,255,255,.6); }
+  .dotnav button:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
+
+  /* controls / instructions tab */
+  .controls-tab{
+    position:absolute; bottom:22px; left:20px; z-index:5;
+    font-family: var(--sans);
+  }
+  .controls-toggle{
+    display:flex; align-items:center; gap:7px;
+    background:rgba(23,19,16,.55); backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,.16); border-radius:20px;
+    color:#e8e2d4; font-size:12px; font-weight:500;
+    padding:9px 14px; cursor:pointer; transition:background .15s;
+  }
+  .controls-toggle:hover{ background:rgba(23,19,16,.75); }
+  .controls-toggle:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .controls-toggle svg{ width:13px; height:13px; transition:transform .2s; }
+  .controls-toggle.open svg{ transform:rotate(180deg); }
+
+  .controls-panel{
+    position:absolute; bottom:calc(100% + 8px); left:0; width:248px;
+    background:rgba(23,19,16,.88); backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.14); border-radius:10px;
+    padding:16px 16px 14px; color:#e8e2d4; font-size:12px; line-height:1.7;
+    opacity:0; transform:translateY(6px); pointer-events:none;
+    transition:opacity .18s, transform .18s;
+  }
+  .controls-panel.open{ opacity:1; transform:translateY(0); pointer-events:auto; }
+  .controls-panel h4{
+    margin:0 0 8px; font-size:10.5px; font-weight:600; letter-spacing:.08em;
+    text-transform:uppercase; color:#c7bfae;
+  }
+  .controls-panel .row{ margin-bottom:4px; color:#cfc7bb; }
+  .controls-panel kbd{
+    background:rgba(255,255,255,.12); border-radius:4px; padding:1px 6px;
+    font-family:var(--sans); font-size:10.5px;
+  }
+  .controls-panel .divider{ height:1px; background:rgba(255,255,255,.14); margin:12px 0; }
+  .quality-buttons{ display:flex; gap:6px; margin-bottom:8px; }
+  .quality-buttons button{
+    flex:1; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16);
+    border-radius:6px; color:#e8e2d4; font-size:11.5px; font-weight:600;
+    padding:7px 0; cursor:pointer; transition:background .15s;
+  }
+  .quality-buttons button.active{ background:var(--accent); border-color:var(--accent); }
+  .quality-buttons button:hover{ background:rgba(255,255,255,.18); }
+  .quality-buttons button.active:hover{ background:var(--accent); }
+  .quality-note{ color:#8a8172; font-size:10px; line-height:1.55; }
+
+  .controls-panel .mobile-only{ display:none; }
+  .controls-panel .desktop-only{ display:block; }
+  @media (pointer: coarse){
+    .controls-panel .mobile-only{ display:block; }
+    .controls-panel .desktop-only{ display:none; }
+  }
+
+  /* mobile fly d-pad — only shown on touch devices */
+  .dpad{
+    position:absolute; bottom:22px; left:50%; transform:translateX(-50%);
+    z-index:5; display:none;
+    grid-template-columns: repeat(3, 46px);
+    grid-template-rows: repeat(3, 46px);
+    gap:4px;
+  }
+  .dpad button{
+    background:rgba(23,19,16,.5); border:1px solid rgba(255,255,255,.16);
+    border-radius:8px; color:#fff; font-size:16px; display:flex; align-items:center; justify-content:center;
+    -webkit-user-select:none; user-select:none; touch-action:none;
+  }
+  .dpad button:active{ background:rgba(58,159,210,.85); }
+  .dpad .up{ grid-column:2; grid-row:1; }
+  .dpad .left{ grid-column:1; grid-row:2; }
+  .dpad .right{ grid-column:3; grid-row:2; }
+  .dpad .down{ grid-column:2; grid-row:3; }
+
+  @media (pointer: coarse){
+    .dpad{ display:grid; }
+  }
+
+  /* ---------- responsive: stack on narrow screens ---------- */
+  @media (max-width: 860px){
+    .layout{ grid-template-columns: 1fr; }
+    .view-col{ height:56vh; top:0; order:1; }
+    .text-col{ order:2; }
+    .section{ min-height:auto; padding: 48px 24px; }
+    .dotnav{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <div class="text-col">
+
+    <div class="scroll-indicator-wrap" aria-hidden="true">
+      <div class="scroll-indicator"><div class="scroll-indicator-fill" id="scroll-fill"></div></div>
+    </div>
+
+    <section class="section" data-pose="landing-wide">
+      <img class="logo" src="./assets/MHC_Logo.png" alt="Montclair History Center — Museum. Archives. Gardens." />
+      <div class="kicker">Introduction</div>
+      <h2>The Hearth Kitchen</h2>
+      <p>This building is a reconstruction of the Hearth Kitchen that was added to the house by James Crane, the son of Israel, in the 1800s.</p>
+      <p>The reconstruction was completed using photographs and drawings of the original Hearth Kitchen.</p>
+    </section>
+
+    <section class="section" data-pose="start-fire">
+      <div class="kicker">Starting the Fire</div>
+      <h2>How did the Crane family start their fire?</h2>
+      <p>In the time of the Crane family, they would have used flint and steel to start their fire.</p>
+      <p>Ideally, they would never let their fire completely die out. They would make sure at least some coals kept nice and hot so that they could get the fire started up again — because using flint and steel is not easy.</p>
+    </section>
+
+    <section class="section" data-pose="who-cook">
+      <div class="kicker">Who Cooked</div>
+      <h2>Who would have been cooking in the kitchen?</h2>
+      <p>The Crane family had hired workers and at least two enslaved workers, Dine and Joe. Dine, as a woman, would have done the cooking and cleaning for the family.</p>
+      <p>She would have been the one to work all day to keep the fire going and to cook all the food for Israel Crane and his family.</p>
+    </section>
+
+    <section class="section" data-pose="direct-fire">
+      <div class="kicker">1 of 3 — Ways to Cook</div>
+      <h2>Over the fire</h2>
+      <p>Pots hanging on the crane directly over the fire. Good for soups and hot water for tea.</p>
+    </section>
+
+    <section class="section" data-pose="hearth">
+      <div class="kicker">2 of 3 — Ways to Cook</div>
+      <h2>On the hearth stones</h2>
+      <p>First, they would pull out some coals from the fire and place them on the stone, then set the spider pan on top of the coals.</p>
+      <p>To make the pan hotter, they would add more coals; to cool it, they would take some away — like an older version of our stove-top today. Good for cooking eggs.</p>
+    </section>
+
+    <section class="section" data-pose="reflective-oven">
+      <div class="kicker">3 of 3 — Ways to Cook</div>
+      <h2>The reflector oven</h2>
+      <p>A reflective oven would get placed right next to the fire — the heat reflects off the back part and helps cook the food all around.</p>
+      <p>Good for hanging sausages or birds (the reflector oven with the hooks), or for cookies (the reflector oven with the sheet).</p>
+    </section>
+
+    <section class="section" data-pose="other-items">
+      <div class="kicker">Explore</div>
+      <h2>Explore other items in the hearth</h2>
+      <p>Fly around the hearth by dragging, scrolling, or using the arrow keys.</p>
+      <p>There are many more items to find: a mortar and pestle, a boat grinder, a brick oven, a butter mold, a brass grater, and more.</p>
+    </section>
+
+    <section class="section ending" data-pose="">
+      <div class="kicker">Visit</div>
+      <h2>Want to learn more about the space?</h2>
+      <p>Visit the Montclair History Center to explore the rich history of the Hearth.</p>
+      <a class="cta" href="https://www.montclairhistory.org" target="_blank" rel="noopener">Visit montclairhistory.org ↗</a>
+      <p class="credit">
+        Note: this 3D model was created using 3D Gaussian Splatting. While it closely represents the Hearth, it is not an exact replica, and you may spot subtle artifacts such as feathered edges or surface gaps.
+        <br/><br/>
+        Created by Evaine Sun. AI-assisted tools were used in the development of this website.
+      </p>
+    </section>
+
+  </div>
+
+  <div class="view-col">
+    <div id="canvas-wrap"></div>
+
+    <div class="loading" id="loading">
+      <div>Loading the Hearth…</div>
+      <div class="bar"><div class="fill" id="loading-fill"></div></div>
+    </div>
+
+    <button class="reanchor" id="reanchor" aria-label="Return to starting view" title="Return to starting view">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path>
+      </svg>
+    </button>
+
+    <div class="dotnav" id="dotnav"></div>
+
+    <div class="controls-tab">
+      <div class="controls-panel open" id="controls-panel">
+        <h4>Navigate</h4>
+        <div class="row desktop-only">Drag to orbit</div>
+        <div class="row desktop-only">Scroll to zoom</div>
+        <div class="row desktop-only"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys to move</div>
+        <div class="row desktop-only">Hold <kbd>Shift</kbd> to move faster</div>
+        <div class="row mobile-only">Drag to orbit</div>
+        <div class="row mobile-only">Pinch to zoom</div>
+        <div class="row mobile-only">Use the on-screen arrows to move</div>
+
+        <div class="divider"></div>
+
+        <h4>Quality</h4>
+        <div class="quality-buttons">
+          <button id="quality-low" class="active" data-quality="low">Low</button>
+          <button id="quality-medium" data-quality="medium">Medium</button>
+          <button id="quality-high" data-quality="high">High</button>
+        </div>
+        <div class="quality-note" id="quality-note">Low is recommended for most laptops without a dedicated graphics card. Try Medium or High if your device handles 3D graphics well.</div>
+      </div>
+      <button class="controls-toggle open" id="controls-toggle" aria-expanded="true" aria-controls="controls-panel">
+        Controls
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+      </button>
+    </div>
+
+    <div class="dpad" id="dpad">
+      <button class="up" data-key="arrowup" aria-label="Move forward">▲</button>
+      <button class="left" data-key="arrowleft" aria-label="Move left">◀</button>
+      <button class="right" data-key="arrowright" aria-label="Move right">▶</button>
+      <button class="down" data-key="arrowdown" aria-label="Move backward">▼</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="scroll-cue" id="scroll-cue" aria-hidden="true">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v14M6 13l6 6 6-6"></path></svg>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+    "@sparkjsdev/spark": "https://sparkjs.dev/releases/spark/2.1.0/spark.module.js"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
+
+const POSES = {
+  "landing-wide": { position: [-4.4717069862091705, 0.08222069749295752, 4.26308577447154], target: [-4.33810365398155, 0.08974590888633395, 4.105846697081566], fov: 60 },
+  "start-fire": { position: [4.39230975913577, 0.31334061662316626, 0.4964471308235937], target: [4.343460477703352, 0.2658084229311071, 0.30154960668941494], fov: 60 },
+  "who-cook": { position: [4.5976812182240785, 0.4510724593314703, 3.81430528828968], target: [4.483243718132366, 0.4082076783207677, 3.6478803028790225], fov: 60 },
+  "direct-fire": { position: [1.1702791488432804, -0.861084966511636, -2.487857529599276], target: [1.1341183105483736, -0.8650383829145561, -2.691099678081887], fov: 60 },
+  "reflective-oven": { position: [2.2895821501518645, -0.28964483377344175, -2.0399006642984476], target: [2.4631240860634147, -0.40115907672141465, -2.0310476000222213], fov: 60 },
+  "hearth": { position: [2.611554411042327, -1.0965127625078235, -1.884482877062227], target: [2.5295378404156517, -1.1973638369406177, -2.044897806466134], fov: 60 },
+  "other-items": { position: [5.071848329344241, 1.3249605275187573, -2.618605499053386], target: [4.8944710999760375, 1.2554096325333235, -2.5390404429316127], fov: 60 },
+};
+
+const SPLAT_FILENAME = "MHC_Hearth_edited.ply";
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const wrap = document.getElementById("canvas-wrap");
+const loadingEl = document.getElementById("loading");
+const loadingFill = document.getElementById("loading-fill");
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, wrap.clientWidth / wrap.clientHeight, 0.01, 1000);
+const landing = POSES["landing-wide"];
+camera.position.set(...landing.position);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(1); // tuned for integrated-graphics performance; revisit with adaptive quality later
+renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+wrap.appendChild(renderer.domElement);
+
+const spark = new SparkRenderer({ renderer });
+spark.lodSplatScale = 0.25; // tuned default budget; revisit with adaptive quality later
+scene.add(spark);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.target.set(...landing.target);
+controls.update();
+
+const splat = new SplatMesh({
+  url: `./assets/${SPLAT_FILENAME}`,
+  lod: true,
+  onLoad: () => { loadingEl.style.display = "none"; },
+  onProgress: (event) => {
+    if (event && event.lengthComputable && event.total > 0) {
+      const pct = Math.round((event.loaded / event.total) * 100);
+      loadingFill.style.width = `${pct}%`;
+      loadingEl.firstElementChild.textContent = `Loading the Hearth… ${pct}%`;
+    }
+  },
+});
+splat.quaternion.set(1, 0, 0, 0); // flip for Spark's coordinate convention
+scene.add(splat);
+
+window.addEventListener("unhandledrejection", (e) => {
+  console.error("Splat load failed:", e.reason);
+  loadingEl.firstElementChild.textContent = "Something went wrong loading the model — try reloading.";
+});
+
+// --- keyboard fly controls ---
+const keys = new Set();
+window.addEventListener("keydown", (e) => { keys.add(e.key.toLowerCase()); noteInteraction(); });
+window.addEventListener("keyup", (e) => keys.delete(e.key.toLowerCase()));
+
+const forward = new THREE.Vector3();
+const right = new THREE.Vector3();
+const move = new THREE.Vector3();
+const up = new THREE.Vector3(0, 1, 0);
+
+function applyFlyMovement(dt) {
+  if (isTweening) return;
+  let speed = 1.8 * dt;
+  if (keys.has("shift")) speed *= 2.5;
+  move.set(0, 0, 0);
+  camera.getWorldDirection(forward);
+  right.crossVectors(forward, up).normalize();
+  if (keys.has("w") || keys.has("arrowup")) move.add(forward);
+  if (keys.has("s") || keys.has("arrowdown")) move.addScaledVector(forward, -1);
+  if (keys.has("d") || keys.has("arrowright")) move.add(right);
+  if (keys.has("a") || keys.has("arrowleft")) move.addScaledVector(right, -1);
+  if (move.lengthSq() > 0) {
+    move.normalize().multiplyScalar(speed);
+    camera.position.add(move);
+    controls.target.add(move);
+  }
+}
+
+// --- mobile d-pad ---
+document.querySelectorAll("#dpad button").forEach((btn) => {
+  const k = btn.dataset.key;
+  const start = (e) => { e.preventDefault(); keys.add(k); noteInteraction(); };
+  const end = (e) => { e.preventDefault(); keys.delete(k); };
+  btn.addEventListener("touchstart", start, { passive: false });
+  btn.addEventListener("touchend", end);
+  btn.addEventListener("touchcancel", end);
+  btn.addEventListener("mousedown", start);
+  window.addEventListener("mouseup", end);
+});
+
+// --- interaction / idle tracking (for ambient drift) ---
+let lastInteraction = performance.now();
+let dragging = false;
+function noteInteraction() { lastInteraction = performance.now(); }
+controls.addEventListener("start", () => { dragging = true; noteInteraction(); });
+controls.addEventListener("end", () => { dragging = false; noteInteraction(); });
+renderer.domElement.addEventListener("wheel", noteInteraction, { passive: true });
+
+// --- camera tween between saved poses ---
+let isTweening = false;
+let tweenId = 0;
+function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+
+const TWEEN_DURATION_MS = 2800; // default — slower = calmer transitions between camera shots
+const TWEEN_OVERRIDES = {
+  // specific section-to-section pairs that need a different pace than the default
+  "hearth|reflective-oven": 4200,
+  "other-items|reflective-oven": 7000,
+};
+function pairKey(a, b) { return [a, b].sort().join("|"); }
+
+function tweenTo(poseKey, fromKey) {
+  const pose = POSES[poseKey];
+  if (!pose) return;
+  const myId = ++tweenId;
+  let duration = TWEEN_DURATION_MS;
+  if (fromKey) {
+    const override = TWEEN_OVERRIDES[pairKey(fromKey, poseKey)];
+    if (override) duration = override;
+  }
+  if (reduceMotion) duration = 1;
+  const startPos = camera.position.clone();
+  const startTarget = controls.target.clone();
+  const endPos = new THREE.Vector3(...pose.position);
+  const endTarget = new THREE.Vector3(...pose.target);
+  isTweening = true;
+  controls.enabled = false;
+  const t0 = performance.now();
+  function step(now) {
+    if (myId !== tweenId) return; // superseded by a newer tween or cancelled
+    const t = Math.min((now - t0) / duration, 1);
+    const e = easeInOutCubic(t);
+    camera.position.lerpVectors(startPos, endPos, e);
+    controls.target.lerpVectors(startTarget, endTarget, e);
+    if (t < 1) {
+      requestAnimationFrame(step);
+    } else {
+      isTweening = false;
+      controls.enabled = true;
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+// cancel an in-progress tween if the user grabs the scene
+renderer.domElement.addEventListener("pointerdown", () => { tweenId++; isTweening = false; controls.enabled = true; });
+
+// --- scroll-driven section triggers ---
+const sections = Array.from(document.querySelectorAll(".section"));
+const scrollCueEl = document.getElementById("scroll-cue");
+let currentSection = "landing-wide";
+
+const observer = new IntersectionObserver(
+  (entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const poseKey = entry.target.dataset.pose;
+        updateDotNav(entry.target);
+        if (poseKey && poseKey !== currentSection) {
+          const prevSection = currentSection;
+          currentSection = poseKey;
+          tweenTo(poseKey, prevSection);
+        }
+      }
+    });
+  },
+  { rootMargin: "-45% 0px -45% 0px", threshold: 0 }
+);
+sections.forEach((s) => observer.observe(s));
+
+// --- dot nav ---
+const dotnavEl = document.getElementById("dotnav");
+sections.forEach((s, i) => {
+  const btn = document.createElement("button");
+  btn.setAttribute("aria-label", `Jump to section ${i + 1}`);
+  btn.addEventListener("click", () => s.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" }));
+  dotnavEl.appendChild(btn);
+});
+function updateDotNav(activeSection) {
+  const idx = sections.indexOf(activeSection);
+  Array.from(dotnavEl.children).forEach((b, i) => b.classList.toggle("active", i === idx));
+}
+
+// --- re-anchor button ---
+document.getElementById("reanchor").addEventListener("click", () => {
+  noteInteraction();
+  tweenTo("landing-wide");
+});
+
+// --- ambient idle drift ---
+const idleOffset = new THREE.Vector3();
+let idleTime = 0;
+
+function updateIdleDrift(dt) {
+  const idle = !dragging && !isTweening && performance.now() - lastInteraction > 3000 && !reduceMotion;
+  if (idle) {
+    idleTime += dt;
+    idleOffset.set(
+      Math.sin(idleTime * 0.4) * 0.035,
+      Math.sin(idleTime * 0.28) * 0.018,
+      Math.cos(idleTime * 0.22) * 0.03
+    );
+  } else {
+    idleTime = 0;
+    idleOffset.set(0, 0, 0);
+  }
+}
+
+// --- controls tab open/close ---
+const controlsToggle = document.getElementById("controls-toggle");
+const controlsPanel = document.getElementById("controls-panel");
+controlsToggle.addEventListener("click", () => {
+  const isOpen = controlsPanel.classList.toggle("open");
+  controlsToggle.classList.toggle("open", isOpen);
+  controlsToggle.setAttribute("aria-expanded", String(isOpen));
+});
+
+// --- quality toggle ---
+const QUALITY = {
+  low: { pixelRatio: 1, lodSplatScale: 0.25 },
+  medium: { pixelRatio: Math.min(window.devicePixelRatio || 1, 1.5), lodSplatScale: 0.55 },
+  high: { pixelRatio: Math.min(window.devicePixelRatio || 1, 2), lodSplatScale: 1 },
+};
+function setQuality(level) {
+  const q = QUALITY[level];
+  renderer.setPixelRatio(q.pixelRatio);
+  spark.lodSplatScale = q.lodSplatScale;
+  onResize();
+  document.getElementById("quality-low").classList.toggle("active", level === "low");
+  document.getElementById("quality-medium").classList.toggle("active", level === "medium");
+  document.getElementById("quality-high").classList.toggle("active", level === "high");
+}
+document.getElementById("quality-low").addEventListener("click", () => setQuality("low"));
+document.getElementById("quality-medium").addEventListener("click", () => setQuality("medium"));
+document.getElementById("quality-high").addEventListener("click", () => setQuality("high"));
+
+// --- scroll progress indicator + scroll cue visibility ---
+const scrollFillEl = document.getElementById("scroll-fill");
+const landingSectionEl = document.querySelector('[data-pose="landing-wide"]');
+function updateScrollProgress() {
+  const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+  const progress = scrollable > 0 ? window.scrollY / scrollable : 0;
+  const pct = Math.min(Math.max(progress, 0), 1) * 100;
+  scrollFillEl.style.height = `${Math.max(pct, 5)}%`; // small minimum so it's visible even at the very top
+
+  // direct, synchronous check (rather than relying only on the async IntersectionObserver)
+  // so the cue reliably reappears when scrolling back to the top, even on fast/flung scrolls
+  const rect = landingSectionEl.getBoundingClientRect();
+  const stillOnLanding = rect.bottom > window.innerHeight * 0.5;
+  scrollCueEl.classList.toggle("visible", stillOnLanding);
+}
+window.addEventListener("scroll", updateScrollProgress, { passive: true });
+updateScrollProgress();
+
+// --- resize ---
+function onResize() {
+  camera.aspect = wrap.clientWidth / wrap.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+}
+window.addEventListener("resize", onResize);
+
+// --- render loop ---
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  applyFlyMovement(dt);
+  controls.update();
+  updateIdleDrift(dt);
+
+  camera.position.add(idleOffset);
+  renderer.render(scene, camera);
+  camera.position.sub(idleOffset);
+}
+animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>MHC Hearth — Camera Calibration</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{
+    --bg: #14120f;
+    --panel: #1c1a16;
+    --line: #34302a;
+    --text: #ece7dc;
+    --muted: #9a9284;
+    --accent: #c98a4b;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  html,body{
+    margin:0; height:100%; background:var(--bg); color:var(--text);
+    font-family: var(--sans);
+  }
+  .layout{
+    display:grid;
+    grid-template-columns: 380px 1fr;
+    height:100vh;
+  }
+  .left{
+    background:var(--panel);
+    border-right:1px solid var(--line);
+    padding:24px;
+    overflow-y:auto;
+  }
+  .left h1{
+    font-size:15px;
+    letter-spacing:.02em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin:0 0 4px;
+  }
+  .left h1 span{ color:var(--text); }
+  .left p{
+    font-size:13.5px;
+    line-height:1.55;
+    color:var(--muted);
+    margin:0 0 16px;
+  }
+  .controls-hint{
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:12px 14px;
+    font-size:12.5px;
+    color:var(--muted);
+    line-height:1.7;
+    margin-bottom:20px;
+  }
+  .controls-hint b{ color:var(--text); font-weight:600; }
+  kbd{
+    background:#2a2620; border:1px solid var(--line); border-radius:4px;
+    padding:1px 6px; font-family:var(--mono); font-size:11px; color:var(--text);
+  }
+  .save-row{ display:flex; gap:8px; margin-bottom:18px; }
+  .save-row input{
+    flex:1; background:var(--bg); border:1px solid var(--line); border-radius:5px;
+    color:var(--text); padding:8px 10px; font-size:13px; font-family:var(--sans);
+  }
+  .save-row input::placeholder{ color:#5c564a; }
+  button{
+    font-family:var(--sans); font-size:12.5px; font-weight:600; letter-spacing:.02em;
+    border-radius:5px; border:1px solid var(--line); cursor:pointer;
+    padding:8px 12px; background:#242019; color:var(--text);
+    transition: background .15s, border-color .15s;
+  }
+  button:hover{ background:#2c2720; border-color:#4a4438; }
+  button.primary{
+    background:var(--accent); border-color:var(--accent); color:#1c1206;
+  }
+  button.primary:hover{ background:#d99a5f; }
+  .pose-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+  .pose-card{
+    border:1px solid var(--line); border-radius:6px; padding:10px 12px;
+    background:var(--bg);
+  }
+  .pose-card .row{ display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .pose-card .name{ font-size:13px; font-weight:600; }
+  .pose-card .actions{ display:flex; gap:6px; }
+  .pose-card .actions button{ padding:4px 8px; font-size:11px; }
+  .pose-card pre{
+    margin:8px 0 0; font-family:var(--mono); font-size:10.5px; color:var(--muted);
+    white-space:pre-wrap; word-break:break-all;
+  }
+  .empty-note{ font-size:12.5px; color:#5c564a; font-style:italic; }
+  .copy-all{ width:100%; margin-top:4px; }
+  .status{
+    margin-top:16px; font-size:11.5px; color:var(--muted); font-family:var(--mono);
+  }
+
+  .right{ position:relative; overflow:hidden; background:#000; }
+  #canvas-wrap{ position:absolute; inset:0; }
+  canvas{ display:block; width:100%; height:100%; }
+
+  .hud{
+    position:absolute; top:14px; left:14px; right:14px;
+    display:flex; justify-content:space-between; align-items:flex-start;
+    pointer-events:none;
+  }
+  .readout{
+    font-family:var(--mono); font-size:11px; color:#e8e2d4; background:rgba(0,0,0,.55);
+    border:1px solid rgba(255,255,255,.12); border-radius:6px; padding:10px 12px;
+    line-height:1.6; pointer-events:none; backdrop-filter: blur(4px);
+  }
+  .readout .k{ color:#9a9284; }
+  .loading{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:10px; background:#0c0a08; color:var(--muted);
+    font-size:13px; z-index:5;
+  }
+  .loading .bar{
+    width:220px; height:3px; background:#2a2620; border-radius:2px; overflow:hidden;
+  }
+  .loading .fill{
+    height:100%; width:0%; background:var(--accent); transition:width .15s;
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="left">
+    <h1>MHC Hearth <span>— Calibration</span></h1>
+    <p>Fly around the cleaned scan, find the angle you want for a section, name it, and save the pose. Copy individual poses or all of them as JSON to send back to Claude for wiring into the scroll sections.</p>
+
+    <div class="controls-hint">
+      <b>Drag</b> — orbit &nbsp;•&nbsp; <b>Scroll</b> — zoom<br/>
+      <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys — fly<br/>
+      <kbd>Q</kbd> / <kbd>E</kbd> — down / up<br/>
+      <b>Shift</b> — move faster
+    </div>
+
+    <div class="controls-hint">
+      <b>Render scale (test perf impact live)</b><br/>
+      <div style="display:flex; gap:6px; margin-top:8px;">
+        <button data-pr="0.5">0.5x</button>
+        <button data-pr="1" class="primary">1x (current)</button>
+        <button data-pr="1.5">1.5x</button>
+        <button data-pr="2">2x</button>
+      </div>
+    </div>
+
+    <div class="controls-hint">
+      <b>LoD splat budget (test perf impact live)</b><br/>
+      <div style="display:flex; gap:6px; margin-top:8px;">
+        <button data-lod="0.25" class="primary">0.25x (current)</button>
+        <button data-lod="0.5">0.5x</button>
+        <button data-lod="1">1x</button>
+        <button data-lod="1.5">1.5x</button>
+      </div>
+    </div>
+
+    <div class="save-row">
+      <input id="pose-name" type="text" placeholder="e.g. landing-wide, stove-closeup" />
+      <button class="primary" id="save-pose">Save pose</button>
+    </div>
+
+    <div class="pose-list" id="pose-list">
+      <div class="empty-note">No poses saved yet — fly to an angle and hit Save pose.</div>
+    </div>
+
+    <button class="copy-all" id="copy-all">Copy all poses as JSON</button>
+    <div class="status" id="status"></div>
+    <div class="status" id="splat-info"></div>
+  </div>
+
+  <div class="right">
+    <div id="canvas-wrap"></div>
+    <div class="loading" id="loading">
+      <div>Loading MHC_Hearth_edited.ply…</div>
+      <div class="bar"><div class="fill" id="loading-fill"></div></div>
+    </div>
+    <div class="hud">
+      <div class="readout" id="readout">pos: —<br/>target: —</div>
+      <div class="readout" id="fps">fps: —</div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+    "@sparkjsdev/spark": "https://sparkjs.dev/releases/spark/2.1.0/spark.module.js"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
+
+const wrap = document.getElementById("canvas-wrap");
+const loadingEl = document.getElementById("loading");
+const loadingFill = document.getElementById("loading-fill");
+const readoutEl = document.getElementById("readout");
+const statusEl = document.getElementById("status");
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, wrap.clientWidth / wrap.clientHeight, 0.01, 1000);
+camera.position.set(0, 1.6, 4);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(1); // capped at 1x — this device is on integrated graphics (Intel UHD/Iris), 2x quadruples pixel-shading cost
+renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+wrap.appendChild(renderer.domElement);
+
+// diagnostic: which GPU is WebGL actually using?
+(function reportGPU() {
+  const gl = renderer.getContext();
+  const dbgInfo = gl.getExtension("WEBGL_debug_renderer_info");
+  const gpuName = dbgInfo
+    ? gl.getParameter(dbgInfo.UNMASKED_RENDERER_WEBGL)
+    : "unavailable (browser blocked this info)";
+  console.log("WebGL renderer (GPU):", gpuName);
+  const gpuEl = document.createElement("div");
+  gpuEl.className = "status";
+  gpuEl.style.wordBreak = "break-word";
+  gpuEl.textContent = `GPU: ${gpuName}`;
+  document.getElementById("splat-info").after(gpuEl);
+})();
+
+const spark = new SparkRenderer({ renderer });
+spark.lodSplatScale = 0.25; // default budget tuned for integrated-graphics performance; adjust up if targeting discrete-GPU devices only
+scene.add(spark);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.target.set(0, 1, 0);
+controls.update();
+
+// --- load splat ---
+const SPLAT_FILENAME = "MHC_Hearth_edited.ply";
+
+const splatInfoEl = document.getElementById("splat-info");
+
+const splat = new SplatMesh({
+  url: `../assets/${SPLAT_FILENAME}`,
+  lod: true, // downsample splat density dynamically based on distance/screen coverage
+  onLoad: () => {
+    loadingEl.style.display = "none";
+    statusEl.textContent = `Loaded ${SPLAT_FILENAME}`;
+  },
+  onProgress: (event) => {
+    // event is a ProgressEvent — { loaded, total, lengthComputable }, not a plain ratio
+    if (event && event.lengthComputable && event.total > 0) {
+      const pct = Math.round((event.loaded / event.total) * 100);
+      loadingFill.style.width = `${pct}%`;
+      loadingEl.firstElementChild.textContent = `Loading ${SPLAT_FILENAME}… ${pct}%`;
+    } else if (event) {
+      // no content-length available — show MB loaded instead of a stalled bar
+      const mb = (event.loaded / (1024 * 1024)).toFixed(1);
+      loadingEl.firstElementChild.textContent = `Loading ${SPLAT_FILENAME}… ${mb} MB`;
+    }
+  },
+});
+
+window.addEventListener("unhandledrejection", (e) => {
+  console.error("Splat load failed:", e.reason);
+  loadingEl.firstElementChild.textContent = `Load failed — check console (likely a path issue with assets/${SPLAT_FILENAME})`;
+});
+splat.quaternion.set(1, 0, 0, 0); // flip for Spark's coordinate convention; adjust if the scene looks upside-down
+scene.add(splat);
+
+// --- keyboard fly controls (WASD / arrows, layered on top of OrbitControls target) ---
+const keys = new Set();
+window.addEventListener("keydown", (e) => keys.add(e.key.toLowerCase()));
+window.addEventListener("keyup", (e) => keys.delete(e.key.toLowerCase()));
+
+const forward = new THREE.Vector3();
+const right = new THREE.Vector3();
+const move = new THREE.Vector3();
+const up = new THREE.Vector3(0, 1, 0);
+
+function applyFlyMovement(dt) {
+  let speed = 1.8 * dt; // units/sec, scaled by frame time
+  if (keys.has("shift")) speed *= 2.5;
+
+  move.set(0, 0, 0);
+  camera.getWorldDirection(forward);
+  right.crossVectors(forward, up).normalize();
+
+  if (keys.has("w") || keys.has("arrowup")) move.add(forward);
+  if (keys.has("s") || keys.has("arrowdown")) move.addScaledVector(forward, -1);
+  if (keys.has("d") || keys.has("arrowright")) move.add(right);
+  if (keys.has("a") || keys.has("arrowleft")) move.addScaledVector(right, -1);
+  if (keys.has("e")) move.add(up);
+  if (keys.has("q")) move.addScaledVector(up, -1);
+
+  if (move.lengthSq() > 0) {
+    move.normalize().multiplyScalar(speed);
+    camera.position.add(move);
+    controls.target.add(move); // keep orbit target moving with the camera so orbiting still feels natural after flying
+  }
+}
+
+// --- resize ---
+function onResize() {
+  camera.aspect = wrap.clientWidth / wrap.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+}
+window.addEventListener("resize", onResize);
+
+// --- live render-scale toggle (for testing perf impact) ---
+document.querySelectorAll("[data-pr]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const pr = parseFloat(btn.dataset.pr);
+    renderer.setPixelRatio(pr);
+    onResize();
+    document.querySelectorAll("[data-pr]").forEach((b) => {
+      b.classList.remove("primary");
+      b.textContent = b.dataset.pr + "x";
+    });
+    btn.classList.add("primary");
+    btn.textContent = pr + "x (current)";
+    statusEl.textContent = `Render scale set to ${pr}x`;
+  });
+});
+
+// --- live LoD splat-budget toggle (direct control over splat count rendered per frame) ---
+document.querySelectorAll("[data-lod]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const scale = parseFloat(btn.dataset.lod);
+    spark.lodSplatScale = scale;
+    document.querySelectorAll("[data-lod]").forEach((b) => {
+      b.classList.remove("primary");
+      b.textContent = b.dataset.lod + "x";
+    });
+    btn.classList.add("primary");
+    btn.textContent = scale + "x (current)";
+    statusEl.textContent = `LoD splat budget set to ${scale}x`;
+  });
+});
+
+// --- render loop ---
+const clock = new THREE.Clock();
+const fpsEl = document.getElementById("fps");
+let frameCount = 0;
+let fpsAccum = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  applyFlyMovement(dt);
+  controls.update();
+  renderer.render(scene, camera);
+  updateReadout();
+
+  frameCount++;
+  fpsAccum += dt;
+  if (fpsAccum >= 0.5) {
+    const fps = Math.round(frameCount / fpsAccum);
+    fpsEl.innerHTML = `<span class="k">fps</span>  ${fps}`;
+    splatInfoEl.textContent = `${splat.numSplats.toLocaleString()} splats rendering`;
+    frameCount = 0;
+    fpsAccum = 0;
+  }
+}
+animate();
+
+function fmt(n) { return n.toFixed(3); }
+
+function updateReadout() {
+  const p = camera.position, t = controls.target;
+  readoutEl.innerHTML =
+    `<span class="k">pos</span>  ${fmt(p.x)}, ${fmt(p.y)}, ${fmt(p.z)}<br/>` +
+    `<span class="k">target</span>  ${fmt(t.x)}, ${fmt(t.y)}, ${fmt(t.z)}<br/>` +
+    `<span class="k">fov</span>  ${camera.fov}`;
+}
+
+// --- pose saving ---
+const poses = {};
+const poseListEl = document.getElementById("pose-list");
+const nameInput = document.getElementById("pose-name");
+
+function currentPose() {
+  return {
+    position: [camera.position.x, camera.position.y, camera.position.z],
+    target: [controls.target.x, controls.target.y, controls.target.z],
+    fov: camera.fov,
+  };
+}
+
+function renderPoseList() {
+  const names = Object.keys(poses);
+  if (names.length === 0) {
+    poseListEl.innerHTML = `<div class="empty-note">No poses saved yet — fly to an angle and hit Save pose.</div>`;
+    return;
+  }
+  poseListEl.innerHTML = "";
+  names.forEach((name) => {
+    const card = document.createElement("div");
+    card.className = "pose-card";
+    card.innerHTML = `
+      <div class="row">
+        <div class="name">${name}</div>
+        <div class="actions">
+          <button data-act="copy" data-name="${name}">Copy</button>
+          <button data-act="update" data-name="${name}">Update</button>
+          <button data-act="delete" data-name="${name}">Delete</button>
+        </div>
+      </div>
+      <pre>${JSON.stringify(poses[name], null, 2)}</pre>
+    `;
+    poseListEl.appendChild(card);
+  });
+}
+
+poseListEl.addEventListener("click", (e) => {
+  const btn = e.target.closest("button");
+  if (!btn) return;
+  const name = btn.dataset.name;
+  const act = btn.dataset.act;
+  if (act === "copy") {
+    navigator.clipboard.writeText(JSON.stringify({ [name]: poses[name] }, null, 2));
+    statusEl.textContent = `Copied "${name}" to clipboard.`;
+  } else if (act === "update") {
+    poses[name] = currentPose();
+    renderPoseList();
+    statusEl.textContent = `Updated "${name}" to current view.`;
+  } else if (act === "delete") {
+    delete poses[name];
+    renderPoseList();
+    statusEl.textContent = `Deleted "${name}".`;
+  }
+});
+
+document.getElementById("save-pose").addEventListener("click", () => {
+  const name = nameInput.value.trim();
+  if (!name) {
+    statusEl.textContent = "Give the pose a name first.";
+    return;
+  }
+  poses[name] = currentPose();
+  renderPoseList();
+  statusEl.textContent = `Saved "${name}".`;
+  nameInput.value = "";
+});
+
+document.getElementById("copy-all").addEventListener("click", () => {
+  if (Object.keys(poses).length === 0) {
+    statusEl.textContent = "No poses to copy yet.";
+    return;
+  }
+  navigator.clipboard.writeText(JSON.stringify(poses, null, 2));
+  statusEl.textContent = "Copied all poses as JSON.";
+});
+</script>
+</body>
+</html>
