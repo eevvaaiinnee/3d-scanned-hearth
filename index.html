@@ -29,6 +29,102 @@
     html{ scroll-behavior: auto; }
   }
 
+  .site-header{
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 44px 24px 32px;
+  }
+  .site-header img{
+    width: clamp(150px, 18vw, 200px);
+    height: auto;
+    display: block;
+  }
+
+  .cover-wrap{
+    background: #ffffff;
+    padding: 0 clamp(20px, 5vw, 72px) 64px;
+  }
+  .cover{
+    position: relative;
+    max-width: 1240px;
+    margin: 0 auto;
+    height: min(72vh, 620px);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .cover img.cover-bg{
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 42%;
+  }
+  .cover .cover-overlay{
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(10,7,4,.4) 0%, rgba(10,7,4,.35) 45%, rgba(10,7,4,.58) 100%);
+  }
+  .cover .cover-content{
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 32px;
+    color: #ffffff;
+  }
+  .cover h1{
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: clamp(32px, 5vw, 54px);
+    letter-spacing: -0.01em;
+    margin: 0 0 16px;
+    text-shadow: 0 2px 18px rgba(0,0,0,.45);
+  }
+  .cover .cover-sub{
+    font-size: clamp(15px, 1.6vw, 18px);
+    line-height: 1.65;
+    max-width: 46ch;
+    color: rgba(255,255,255,.92);
+    margin: 0 0 30px;
+    text-shadow: 0 1px 10px rgba(0,0,0,.4);
+  }
+  .cover-scroll-cue{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: .02em;
+    color: rgba(255,255,255,.92);
+    text-shadow: 0 1px 8px rgba(0,0,0,.4);
+  }
+  .cover-scroll-cue svg{
+    width:30px;
+    height:30px;
+    animation: coverBreathe 2.2s ease-in-out infinite;
+  }
+  @keyframes coverBreathe{
+    0%, 100% { opacity: .7; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(8px); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .cover-scroll-cue svg{ animation: none; }
+  }
+  @media (max-width: 860px){
+    .cover{ height: 60vh; border-radius: 10px; }
+    .cover h1{ font-size: clamp(28px, 8vw, 40px); }
+    .cover-wrap{ padding: 0 16px 40px; }
+    .site-header{ padding: 32px 20px 24px; }
+  }
+
   .layout{
     display:grid;
     grid-template-columns: minmax(360px, 34%) 1fr;
@@ -42,45 +138,7 @@
     flex-direction:column;
     justify-content:center;
     padding: 12vh 64px;
-    border-top: 1px solid var(--hairline);
   }
-  .section:first-child{ border-top:none; }
-  .logo{
-    width: 190px;
-    height: auto;
-    display: block;
-    align-self: center;
-    margin-bottom: 28px;
-  }
-  .scroll-cue{
-    position: fixed;
-    bottom: 30px;
-    left: calc(max(360px, 34vw) / 2);
-    transform: translateX(-50%);
-    z-index: 4;
-    color: var(--kicker);
-    width: 32px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .5s ease;
-  }
-  .scroll-cue.visible{
-    opacity: 1;
-    pointer-events: auto;
-    animation: breathe 2.2s ease-in-out infinite;
-  }
-  .scroll-cue svg{ width:32px; height:32px; display:block; }
-  @keyframes breathe{
-    0%, 100% { transform: translateX(-50%) translateY(0); }
-    50% { transform: translateX(-50%) translateY(8px); }
-  }
-  @media (prefers-reduced-motion: reduce){
-    .scroll-cue.visible{ animation: none; }
-  }
-  @media (max-width: 860px){
-    .scroll-cue{ left: 50%; }
-  }
-
   .kicker{
     font-family: var(--sans);
     font-size: 11.5px;
@@ -144,17 +202,34 @@
     position: absolute;
     top: 0;
     right: 0;
-    width: 7px;
+    width: 4px;
     height: 100vh;
-    background: #ddd6c8;
-    border-radius: 4px 0 0 4px;
+    background: #e2e2e2;
+    border-radius: 3px 0 0 3px;
   }
   .scroll-indicator-fill{
+    position: relative;
     width: 100%;
     background: var(--accent);
     height: 0%;
     transition: height .08s linear;
-    border-radius: 4px 0 0 4px;
+    border-radius: 3px 0 0 3px;
+  }
+  .scroll-indicator-arrow-wrap{
+    position: absolute;
+    bottom: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .scroll-indicator-arrow-wrap svg{
+    width: 16px;
+    height: 16px;
+    color: var(--accent);
+    display: block;
+    animation: coverBreathe 2.2s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .scroll-indicator-arrow-wrap svg{ animation: none; }
   }
   @media (max-width: 860px){
     .scroll-indicator-wrap{ display:none; }
@@ -165,8 +240,18 @@
     position: sticky;
     top:0;
     height:100vh;
-    background: var(--canvas-bg);
+    background: #ffffff;
     overflow:hidden;
+    padding: 28px;
+    box-sizing: border-box;
+  }
+  .viewer-frame{
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: var(--canvas-bg);
+    border-radius: 14px;
+    overflow: hidden;
   }
   #canvas-wrap{ position:absolute; inset:0; }
   canvas{ display:block; width:100%; height:100%; }
@@ -183,15 +268,17 @@
   .reanchor{
     position:absolute; top:20px; left:20px; z-index:5;
     width:42px; height:42px; border-radius:50%;
-    background:rgba(23,19,16,.55); backdrop-filter:blur(6px);
-    border:1px solid rgba(255,255,255,.16);
+    background:rgba(255,255,255,.62); backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,.4);
+    box-shadow: 0 2px 10px rgba(0,0,0,.12);
     display:flex; align-items:center; justify-content:center;
     cursor:pointer; transition: background .15s, transform .15s;
   }
-  .reanchor:hover{ background:rgba(58,159,210,.85); }
+  .reanchor svg{ width:18px; height:18px; stroke:var(--ink); transition: stroke .15s; }
+  .reanchor:hover{ background:var(--accent); }
+  .reanchor:hover svg{ stroke:#ffffff; }
   .reanchor:active{ transform: scale(0.94); }
   .reanchor:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
-  .reanchor svg{ width:18px; height:18px; }
 
   /* section dot nav */
   .dotnav{
@@ -200,11 +287,11 @@
   }
   .dotnav button{
     width:7px; height:7px; border-radius:50%; padding:0;
-    background:rgba(255,255,255,.28); border:none; cursor:pointer;
+    background:rgba(255,255,255,.55); border:none; cursor:pointer;
     transition: background .2s, transform .2s;
   }
   .dotnav button.active{ background:var(--accent); transform:scale(1.5); }
-  .dotnav button:hover{ background:rgba(255,255,255,.6); }
+  .dotnav button:hover{ background:rgba(255,255,255,.85); }
   .dotnav button:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
 
   /* controls / instructions tab */
@@ -214,45 +301,47 @@
   }
   .controls-toggle{
     display:flex; align-items:center; gap:7px;
-    background:rgba(23,19,16,.55); backdrop-filter:blur(6px);
-    border:1px solid rgba(255,255,255,.16); border-radius:20px;
-    color:#e8e2d4; font-size:12px; font-weight:500;
-    padding:9px 14px; cursor:pointer; transition:background .15s;
+    background:rgba(255,255,255,.62); backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,.4); border-radius:20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.12);
+    color:var(--ink); font-family: var(--sans); font-size:12px; font-weight:500;
+    padding:9px 14px; cursor:pointer; transition:background .15s, color .15s;
   }
-  .controls-toggle:hover{ background:rgba(23,19,16,.75); }
+  .controls-toggle:hover{ background:var(--accent); color:#ffffff; }
   .controls-toggle:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
   .controls-toggle svg{ width:13px; height:13px; transition:transform .2s; }
   .controls-toggle.open svg{ transform:rotate(180deg); }
 
   .controls-panel{
     position:absolute; bottom:calc(100% + 8px); left:0; width:248px;
-    background:rgba(23,19,16,.88); backdrop-filter:blur(8px);
-    border:1px solid rgba(255,255,255,.14); border-radius:10px;
-    padding:16px 16px 14px; color:#e8e2d4; font-size:12px; line-height:1.7;
+    background:rgba(255,255,255,.68); backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.45); border-radius:10px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.14);
+    padding:16px 16px 14px; color:var(--ink); font-size:12px; line-height:1.7;
     opacity:0; transform:translateY(6px); pointer-events:none;
     transition:opacity .18s, transform .18s;
   }
   .controls-panel.open{ opacity:1; transform:translateY(0); pointer-events:auto; }
   .controls-panel h4{
     margin:0 0 8px; font-size:10.5px; font-weight:600; letter-spacing:.08em;
-    text-transform:uppercase; color:#c7bfae;
+    text-transform:uppercase; color: var(--ink-soft);
   }
-  .controls-panel .row{ margin-bottom:4px; color:#cfc7bb; }
+  .controls-panel .row{ margin-bottom:4px; color:var(--ink-soft); }
   .controls-panel kbd{
-    background:rgba(255,255,255,.12); border-radius:4px; padding:1px 6px;
-    font-family:var(--sans); font-size:10.5px;
+    background:rgba(0,0,0,.06); border-radius:4px; padding:1px 6px;
+    font-family:var(--sans); font-size:10.5px; color:var(--ink);
   }
-  .controls-panel .divider{ height:1px; background:rgba(255,255,255,.14); margin:12px 0; }
+  .controls-panel .divider{ height:1px; background:rgba(0,0,0,.1); margin:12px 0; }
   .quality-buttons{ display:flex; gap:6px; margin-bottom:8px; }
   .quality-buttons button{
-    flex:1; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16);
-    border-radius:6px; color:#e8e2d4; font-size:11.5px; font-weight:600;
-    padding:7px 0; cursor:pointer; transition:background .15s;
+    flex:1; background:rgba(0,0,0,.04); border:1px solid rgba(0,0,0,.1);
+    border-radius:6px; color:var(--ink); font-family: var(--sans); font-size:11.5px; font-weight:600;
+    padding:7px 0; cursor:pointer; transition:background .15s, color .15s;
   }
-  .quality-buttons button.active{ background:var(--accent); border-color:var(--accent); }
-  .quality-buttons button:hover{ background:rgba(255,255,255,.18); }
+  .quality-buttons button.active{ background:var(--accent); border-color:var(--accent); color:#ffffff; }
+  .quality-buttons button:hover{ background:rgba(0,0,0,.09); }
   .quality-buttons button.active:hover{ background:var(--accent); }
-  .quality-note{ color:#8a8172; font-size:10px; line-height:1.55; }
+  .quality-note{ color: var(--ink-soft); font-size:10px; line-height:1.55; }
 
   .controls-panel .mobile-only{ display:none; }
   .controls-panel .desktop-only{ display:block; }
@@ -270,11 +359,13 @@
     gap:4px;
   }
   .dpad button{
-    background:rgba(23,19,16,.5); border:1px solid rgba(255,255,255,.16);
-    border-radius:8px; color:#fff; font-size:16px; display:flex; align-items:center; justify-content:center;
+    background:rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.08);
+    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    border-radius:8px; color:var(--ink); font-size:16px; display:flex; align-items:center; justify-content:center;
     -webkit-user-select:none; user-select:none; touch-action:none;
+    transition: background .15s, color .15s;
   }
-  .dpad button:active{ background:rgba(58,159,210,.85); }
+  .dpad button:active{ background:var(--accent); color:#ffffff; }
   .dpad .up{ grid-column:2; grid-row:1; }
   .dpad .left{ grid-column:1; grid-row:2; }
   .dpad .right{ grid-column:3; grid-row:2; }
@@ -287,7 +378,7 @@
   /* ---------- responsive: stack on narrow screens ---------- */
   @media (max-width: 860px){
     .layout{ grid-template-columns: 1fr; }
-    .view-col{ height:56vh; top:0; order:1; }
+    .view-col{ height:56vh; top:0; order:1; padding: 14px; }
     .text-col{ order:2; }
     .section{ min-height:auto; padding: 48px 24px; }
     .dotnav{ display:none; }
@@ -296,16 +387,40 @@
 </head>
 <body>
 
+<header class="site-header">
+  <a href="https://www.montclairhistory.org/" target="_blank" rel="noopener">
+    <img src="./assets/MHC_Logo.png" alt="Montclair History Center — Museum. Archives. Gardens." />
+  </a>
+</header>
+
+<section class="cover-wrap">
+  <div class="cover">
+    <img class="cover-bg" src="./assets/hero-cover.jpg" alt="The Hearth Kitchen at the Israel Crane House" />
+    <div class="cover-overlay"></div>
+    <div class="cover-content">
+      <h1>The Hearth Kitchen</h1>
+      <p class="cover-sub">Explore the reconstructed hearth kitchen and discover how this space was used by the Crane family in the 1800s.</p>
+      <div class="cover-scroll-cue" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v14M6 13l6 6 6-6"></path></svg>
+        <span>Scroll to explore its story</span>
+      </div>
+    </div>
+  </div>
+</section>
+
 <div class="layout">
 
   <div class="text-col">
 
     <div class="scroll-indicator-wrap" aria-hidden="true">
-      <div class="scroll-indicator"><div class="scroll-indicator-fill" id="scroll-fill"></div></div>
+      <div class="scroll-indicator"><div class="scroll-indicator-fill" id="scroll-fill">
+        <div class="scroll-indicator-arrow-wrap" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+        </div>
+      </div></div>
     </div>
 
     <section class="section" data-pose="landing-wide">
-      <img class="logo" src="./assets/MHC_Logo.png" alt="Montclair History Center — Museum. Archives. Gardens." />
       <div class="kicker">Introduction</div>
       <h2>The Hearth Kitchen</h2>
       <p>This building is a reconstruction of the Hearth Kitchen that was added to the house by James Crane, the son of Israel, in the 1800s.</p>
@@ -368,6 +483,7 @@
   </div>
 
   <div class="view-col">
+    <div class="viewer-frame">
     <div id="canvas-wrap"></div>
 
     <div class="loading" id="loading">
@@ -376,7 +492,7 @@
     </div>
 
     <button class="reanchor" id="reanchor" aria-label="Return to starting view" title="Return to starting view">
-      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="3"></circle>
         <path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path>
       </svg>
@@ -388,11 +504,9 @@
       <div class="controls-panel open" id="controls-panel">
         <h4>Navigate</h4>
         <div class="row desktop-only">Drag to orbit</div>
-        <div class="row desktop-only">Scroll to zoom</div>
-        <div class="row desktop-only"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys to move</div>
+        <div class="row desktop-only"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move</div>
         <div class="row desktop-only">Hold <kbd>Shift</kbd> to move faster</div>
         <div class="row mobile-only">Drag to orbit</div>
-        <div class="row mobile-only">Pinch to zoom</div>
         <div class="row mobile-only">Use the on-screen arrows to move</div>
 
         <div class="divider"></div>
@@ -417,12 +531,9 @@
       <button class="right" data-key="arrowright" aria-label="Move right">▶</button>
       <button class="down" data-key="arrowdown" aria-label="Move backward">▼</button>
     </div>
+    </div>
   </div>
 
-</div>
-
-<div class="scroll-cue" id="scroll-cue" aria-hidden="true">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v14M6 13l6 6 6-6"></path></svg>
 </div>
 
 <script type="importmap">
@@ -473,6 +584,7 @@ scene.add(spark);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.08;
+controls.enableZoom = false; // scrolling should always move between sections, never zoom the camera
 controls.target.set(...landing.target);
 controls.update();
 
@@ -498,7 +610,12 @@ window.addEventListener("unhandledrejection", (e) => {
 
 // --- keyboard fly controls ---
 const keys = new Set();
-window.addEventListener("keydown", (e) => { keys.add(e.key.toLowerCase()); noteInteraction(); });
+window.addEventListener("keydown", (e) => {
+  const k = e.key.toLowerCase();
+  if (k.startsWith("arrow")) return; // desktop movement is WASD-only; arrow keys intentionally do nothing here
+  keys.add(k);
+  noteInteraction();
+});
 window.addEventListener("keyup", (e) => keys.delete(e.key.toLowerCase()));
 
 const forward = new THREE.Vector3();
@@ -595,7 +712,6 @@ renderer.domElement.addEventListener("pointerdown", () => { tweenId++; isTweenin
 
 // --- scroll-driven section triggers ---
 const sections = Array.from(document.querySelectorAll(".section"));
-const scrollCueEl = document.getElementById("scroll-cue");
 let currentSection = "landing-wide";
 
 const observer = new IntersectionObserver(
@@ -682,20 +798,13 @@ document.getElementById("quality-low").addEventListener("click", () => setQualit
 document.getElementById("quality-medium").addEventListener("click", () => setQuality("medium"));
 document.getElementById("quality-high").addEventListener("click", () => setQuality("high"));
 
-// --- scroll progress indicator + scroll cue visibility ---
+// --- scroll progress indicator ---
 const scrollFillEl = document.getElementById("scroll-fill");
-const landingSectionEl = document.querySelector('[data-pose="landing-wide"]');
 function updateScrollProgress() {
   const scrollable = document.documentElement.scrollHeight - window.innerHeight;
   const progress = scrollable > 0 ? window.scrollY / scrollable : 0;
   const pct = Math.min(Math.max(progress, 0), 1) * 100;
   scrollFillEl.style.height = `${Math.max(pct, 5)}%`; // small minimum so it's visible even at the very top
-
-  // direct, synchronous check (rather than relying only on the async IntersectionObserver)
-  // so the cue reliably reappears when scrolling back to the top, even on fast/flung scrolls
-  const rect = landingSectionEl.getBoundingClientRect();
-  const stillOnLanding = rect.bottom > window.innerHeight * 0.5;
-  scrollCueEl.classList.toggle("visible", stillOnLanding);
 }
 window.addEventListener("scroll", updateScrollProgress, { passive: true });
 updateScrollProgress();
